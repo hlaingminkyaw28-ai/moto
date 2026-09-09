@@ -1,0 +1,49 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, tag, or commit to deploy'
+        required: true
+        default: main
+        type: string
+
+# This job remains safely skipped until DEPLOY_ENABLED is set to true in
+# GitHub Actions Variables. See docs/CI-CD-GUIDE.md before enabling it.
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy to server over SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          DEPLOY_REF: ${{ inputs.ref }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "
+            set -eu
+            cd '$DEPLOY_PATH'
+            git fetch --prune origin
+            git checkout --force '$DEPLOY_REF'
+            git pull --ff-only origin '$DEPLOY_REF'
+            docker compose up -d --build
+            docker compose exec -T app php artisan migrate --force
+            docker compose exec -T app php artisan config:cache
+            docker compose exec -T app php artisan view:cache
+          "
