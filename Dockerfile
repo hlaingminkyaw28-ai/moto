@@ -19,9 +19,21 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+COPY composer.json composer.lock ./
+
+# Install production PHP dependencies in the image. This makes the image work
+# after a fresh clone, rather than depending on a locally mounted vendor/ folder.
+RUN COMPOSER_ALLOW_SUPERUSER=1 composer install \
+    --no-dev \
+    --no-interaction \
+    --prefer-dist \
+    --optimize-autoloader \
+    --no-scripts
+
 COPY . /var/www/html
 
-RUN mkdir -p /var/www/html/bootstrap/cache \
+RUN COMPOSER_ALLOW_SUPERUSER=1 composer dump-autoload --no-dev --optimize --no-interaction \
+    && mkdir -p /var/www/html/bootstrap/cache \
     /var/www/html/storage/framework/cache/data \
     /var/www/html/storage/framework/sessions \
     /var/www/html/storage/framework/views \

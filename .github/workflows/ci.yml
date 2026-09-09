@@ -41,3 +41,8 @@ jobs:
 
       - name: Run automated tests
         run: php artisan test
+
+      # This Laravel app has no Node/Vite build. Its deployable artifact is the
+      # Docker image defined in Dockerfile, so build that actual artifact.
+      - name: Build the application Docker image
+        run: docker compose build app
