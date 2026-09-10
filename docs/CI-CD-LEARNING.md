@@ -1,7 +1,7 @@
 # CI/CD learning guide: Moto Service
 
 This guide explains the CI setup for **this Laravel motorcycle-service project**. It uses the same commands and files found in this repository, not a generic JavaScript example.
-
+docs/CI-CD-LEARNING.md
 ## Project audit
 
 | Question | What this project uses |
